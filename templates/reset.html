@@ -1,0 +1,8 @@
+<h2>Reset Password - {{ user_type|capitalize }}</h2>
+<form method="POST">
+    <label>Reset Code</label>
+    <input type="text" name="reset_code" required>
+    <label>New Password</label>
+    <input type="password" name="password" required>
+    <button type="submit">Reset Password</button>
+</form>

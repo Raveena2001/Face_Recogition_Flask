@@ -10,19 +10,34 @@ import cv2
 import numpy as np
 import face_recognition
 from video_capture import VideoCapture
+from database import init_db
+from models import Student, Faculty, Attendance
+from database import db
+# from add_admin import add_admin
+
+# from database import db  # db initialization should come first
+# from models import Faculty, Student, Attendance
+# from models import *
 
 app = Flask(__name__)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db/database.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@localhost/face'
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = '8IR4M7-R3c74GjTHhKzWODaYVHuPGqn4w92DHLqeYJA'
 
-db = SQLAlchemy(app)
-# Import models here as to avoid circular import issue
-from models import *
+init_db(app)
+
+# Import models (ensures models are registered before creating tables)
+# with app.app_context():
+#     db.create_all()
+
+# db = SQLAlchemy(app)
+# # Import models here as to avoid circular import issue
+# from models import *
 
 @app.route('/')
+
 def index():
     return render_template('index.html')
 
@@ -98,6 +113,60 @@ def is_faculty_logged_in(f):
             flash('Unauthorized, Please login!', 'danger')
             return redirect(url_for('login_faculty'))
     return wrap
+@app.route('/forgot_password/<string:user_type>', methods=['GET', 'POST'])
+def forgot_password(user_type):
+    if request.method == 'POST':
+        email = request.form['email']
+        user = None
+        
+        # Determine if the user is a student or faculty
+        if user_type == 'student':
+            user = Student.query.filter_by(email=email).first()
+        elif user_type == 'faculty':
+            user = Faculty.query.filter_by(email=email).first()
+
+        if user:
+            # Simulate sending an email or OTP for password reset
+            reset_code = str(np.random.randint(100000, 999999))  # Random 6-digit code
+            session['reset_email'] = email
+            session['reset_code'] = reset_code
+
+            flash(f"Password reset code sent to {email}.", 'info')
+            return redirect(url_for('reset_password', user_type=user_type))
+        else:
+            flash(f"No account found with email {email}.", 'danger')
+    
+    return render_template('forgot_password.html', user_type=user_type)
+@app.route('/reset_password/<string:user_type>', methods=['GET', 'POST'])
+def reset_password(user_type):
+    if request.method == 'POST':
+        reset_code = request.form['reset_code']
+        new_password = request.form['password']
+
+        # Verify the reset code
+        if 'reset_code' in session and reset_code == session['reset_code']:
+            email = session['reset_email']
+            user = None
+            
+            # Update password for the respective user type
+            if user_type == 'student':
+                user = Student.query.filter_by(email=email).first()
+            elif user_type == 'faculty':
+                user = Faculty.query.filter_by(email=email).first()
+
+            if user:
+                user.password = new_password
+                db.session.commit()
+                session.pop('reset_email', None)
+                session.pop('reset_code', None)
+                flash("Password reset successful. Please log in with your new password.", 'success')
+                return redirect(url_for(f'login_{user_type}'))
+            else:
+                flash("An error occurred. Please try again.", 'danger')
+        else:
+            flash("Invalid reset code.", 'danger')
+    
+    return render_template('reset.html', user_type=user_type)
 
 
 @app.route('/student')
@@ -443,4 +512,9 @@ def mark_face_attendance():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    # add_admin()
     app.run(debug=True)
+
+

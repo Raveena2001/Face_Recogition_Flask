@@ -1,4 +1,5 @@
-from app import db
+# from app import db
+from database import db
 
 class Student(db.Model):
     __tablename__ = 'Student'
@@ -37,4 +38,4 @@ class Attendance(db.Model):
     marked_date = db.Column(db.Date)
     marked_time = db.Column(db.Time)
 
-db.create_all()
+# db.create_all()

@@ -40,6 +40,11 @@
               </div>
               <div class="card-footer text-muted">
               </div>
+              {% if 'std_logged_in' in session or 'fty_logged_in' in session %}
+              <form action="{{ url_for('logout') }}" method="get" style="display: inline;">
+                  <button type="submit" class="btn btn-danger">Logout</button>
+              </form>
+          {% endif %}
             </div>
           </div>
 {% endblock %}
